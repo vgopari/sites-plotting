@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Plotting Locations on Google Maps</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #map {
+            height: 900px;
+            width: 100%;
+        }
+    </style>
+    <!-- Add Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=API_KEY"></script>
+</head>
+
+<body>
+    <h1>Locations Plotted on Google Maps</h1>
+    <div id="map"></div>
+
+    <script>
+        // Initialize the map
+        function initMap() {
+            var mapOptions = {
+                center: { lat: 22.3511148, lng: 78.6677428 }, // Center on India
+                zoom: 5
+            };
+            var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+
+            // Call the function to fetch data and plot markers
+            fetchAndPlotMarkers(map);
+        }
+
+        // Function to fetch data and plot markers
+        async function fetchAndPlotMarkers(map) {
+            try {
+                const response = await fetch('http://localhost:8080/ivis-sites/get-all-from-redis');
+                const data = await response.json();
+
+                // Array to store markers
+                let markers = [];
+
+                // Iterate through data and create markers
+                for (const key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        const site = data[key];
+                        const { latitude, longitude, pkSiteId } = site;
+
+                        // Convert latitude and longitude to numbers
+                        const lat = parseFloat(latitude);
+                        const lng = parseFloat(longitude);
+
+                        // Create marker (without adding to map yet)
+                        let marker = new google.maps.Marker({
+                            position: { lat: lat, lng: lng },
+                            title: `Site ID: ${pkSiteId}`
+                        });
+
+                        markers.push(marker);
+
+                        // Optionally clear markers array after a certain number to manage memory
+                        if (markers.length >= 500) {
+                            addMarkersToMap(markers, map);
+                            markers = [];
+                            // Optional: Add a small delay between batches if needed
+                            await new Promise(resolve => setTimeout(resolve, 1));
+                        }
+                    }
+                }
+
+                // Add any remaining markers
+                addMarkersToMap(markers, map);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        // Function to add markers to the map
+        function addMarkersToMap(markers, map) {
+            markers.forEach(marker => {
+                marker.setMap(map);
+            });
+        }
+
+        // Initialize the map on window load
+        window.onload = initMap;
+    </script>
+</body>
+
+</html>
